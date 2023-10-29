@@ -6,46 +6,40 @@ import kotlinx.coroutines.channels.Channel
 fun main() = runBlocking {
     val inputArray = intArrayOf(1, 2, 3, 4, 5, 6)
     val numberOfProcessors = Runtime.getRuntime().availableProcessors()
-    val tasksChannel = Channel<Int?>(Channel.UNLIMITED) // Null використовується як позначка завершення
-    val mutex = Mutex()
+    val tasksChannel = Channel<Int>(Channel.UNLIMITED)
     val doneChannel = Channel<Unit>(Channel.UNLIMITED)
-    var activeLength = inputArray.size
+    val mutex = Mutex()
+
+    val activeElements = MutableList(inputArray.size) { i -> i }
 
     val workerJobs = List(numberOfProcessors) {
         launch {
             for (index in tasksChannel) {
-                if (index == null) continue
-
-                val oppositeIndex = activeLength - 1 - index
+                val oppositeIndex = activeElements.size - 1 - index
                 mutex.withLock {
-                    inputArray[index] += inputArray[oppositeIndex]
-                    inputArray[oppositeIndex] = 0
+                    inputArray[activeElements[index]] += inputArray[activeElements[oppositeIndex]]
+                    inputArray[activeElements[oppositeIndex]] = 0
                 }
                 doneChannel.send(Unit)
             }
         }
     }
 
-    while (activeLength > 1) {
-        val halfLength = activeLength / 2
-        for (i in 0 until halfLength) {
+    while (activeElements.size > 1) {
+        val operations = activeElements.size / 2
+        for (i in 0 until operations) {
             tasksChannel.send(i)
         }
 
         // Очікуємо завершення всіх завдань цієї хвилі
-        repeat(halfLength) {
+        repeat(operations) {
             doneChannel.receive()
         }
 
-        activeLength = halfLength
-    }
-
-    // Сигнал до робочих потоків про завершення роботи
-    repeat(numberOfProcessors) {
-        tasksChannel.send(null)
+        activeElements.subList(operations, activeElements.size).clear()
     }
 
     tasksChannel.close()
     workerJobs.forEach { it.join() }
-    println(inputArray[0])
+    println(inputArray.toList())
 }
