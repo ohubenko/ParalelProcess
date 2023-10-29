@@ -9,13 +9,14 @@ fun main() = runBlocking {
     val tasksChannel = Channel<Int?>(Channel.UNLIMITED) // Null використовується як позначка завершення
     val mutex = Mutex()
     val doneChannel = Channel<Unit>(Channel.UNLIMITED)
+    var activeLength = inputArray.size
 
     val workerJobs = List(numberOfProcessors) {
         launch {
             for (index in tasksChannel) {
                 if (index == null) continue
 
-                val oppositeIndex = inputArray.size - 1 - index
+                val oppositeIndex = activeLength - 1 - index
                 mutex.withLock {
                     inputArray[index] += inputArray[oppositeIndex]
                     inputArray[oppositeIndex] = 0
@@ -25,7 +26,6 @@ fun main() = runBlocking {
         }
     }
 
-    var activeLength = inputArray.size
     while (activeLength > 1) {
         val halfLength = activeLength / 2
         for (i in 0 until halfLength) {
