@@ -1,9 +1,11 @@
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.atomic.AtomicLongArray
 
-fun main(inputList: MutableList<Int>): Int = runBlocking {
+fun main(inputList: AtomicLongArray): Long = runBlocking {
     val mutex = Mutex()
+
     suspend fun processPairSum(index: Int, oppositeIndex: Int) {
         val sum = inputList[index] + inputList[oppositeIndex]
         mutex.withLock {
@@ -11,9 +13,9 @@ fun main(inputList: MutableList<Int>): Int = runBlocking {
             inputList.removeAt(oppositeIndex)
         }
     }
-    while (inputList.size > 1) {
+    while (inputList.length() > 1) {
         val jobs = mutableListOf<Job>()
-        val halfSize = inputList.size / 2
+        val halfSize = inputList.length() / 2
         for (i in 0..<halfSize) {
             val oppositeIndex = inputList.lastIndex - i
             jobs.add(launch { processPairSum(i, oppositeIndex) })
